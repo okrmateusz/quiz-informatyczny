@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#172554">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Pytania">
+  <title>Quiz informatyczny</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <style>
+    :root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100svh; background: linear-gradient(145deg, #eff6ff, #eef2ff 55%, #faf5ff); color: #172554; }
+    button, input { font: inherit; }
+    .app { width: min(100%, 720px); margin: auto; padding: max(20px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom)); }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 22px; }
+    h1 { margin: 0; font-size: clamp(1.4rem, 6vw, 2rem); letter-spacing: -.03em; }
+    .icon-button { border: 0; border-radius: 14px; padding: 11px 14px; background: #fff; color: #1e3a8a; box-shadow: 0 5px 18px #1e3a8a18; }
+    .card { min-height: 390px; display: flex; flex-direction: column; background: #fff; padding: 24px; border-radius: 26px; box-shadow: 0 18px 45px #1e3a8a20; }
+    .meta { display: flex; justify-content: space-between; gap: 12px; color: #64748b; font-size: .85rem; }
+    .category { display: inline-block; margin: 28px 0 12px; color: #4f46e5; font-weight: 700; font-size: .85rem; text-transform: uppercase; letter-spacing: .06em; }
+    .question { margin: 0; font-size: clamp(1.5rem, 6vw, 2.15rem); line-height: 1.18; letter-spacing: -.025em; }
+    .answer { margin: 25px 0 0; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 1.12rem; line-height: 1.55; color: #334155; }
+    .spacer { flex: 1; min-height: 28px; }
+    .actions { display: grid; gap: 12px; margin-top: 18px; }
+    .primary { width: 100%; border: 0; border-radius: 17px; padding: 17px; background: #4338ca; color: white; font-weight: 750; box-shadow: 0 9px 20px #4338ca40; }
+    .primary:active { transform: translateY(1px); }
+    .notice { text-align: center; color: #64748b; line-height: 1.5; }
+    dialog { width: min(calc(100% - 28px), 620px); max-height: 85svh; border: 0; border-radius: 24px; padding: 0; color: #172554; box-shadow: 0 25px 70px #0f172a55; }
+    dialog::backdrop { background: #0f172a88; backdrop-filter: blur(3px); }
+    .settings { padding: 22px; }
+    .settings-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .settings h2 { margin: 0; }
+    .settings-list { display: grid; gap: 8px; max-height: 55svh; overflow: auto; padding: 5px 2px; }
+    label { display: flex; align-items: center; gap: 12px; padding: 12px; background: #f8fafc; border-radius: 13px; line-height: 1.25; }
+    input { width: 21px; height: 21px; accent-color: #4338ca; flex: 0 0 auto; }
+    .settings-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+    .secondary { border: 1px solid #cbd5e1; border-radius: 14px; padding: 13px; background: white; color: #334155; font-weight: 650; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header><h1>Quiz informatyczny</h1><button class="icon-button" id="settingsButton" aria-label="Ustawienia">⚙︎ Ustawienia</button></header>
+    <section class="card" aria-live="polite">
+      <div class="meta"><span id="progress">Ładowanie…</span><span id="total"></span></div>
+      <div id="quiz" hidden>
+        <span class="category" id="category"></span>
+        <h2 class="question" id="question"></h2>
+        <p class="answer" id="answer" hidden></p>
+      </div>
+      <p class="notice" id="notice">Wczytuję pytania…</p>
+      <div class="spacer"></div>
+      <div class="actions">
+        <button class="primary" id="answerButton" hidden>Pokaż odpowiedź</button>
+        <button class="primary" id="nextButton" hidden>Następne pytanie</button>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="settingsDialog">
+    <form method="dialog" class="settings">
+      <div class="settings-head"><h2>Kategorie</h2><button class="icon-button" value="cancel" aria-label="Zamknij">✕</button></div>
+      <div class="settings-list" id="settingsList"></div>
+      <div class="settings-actions"><button type="button" class="secondary" id="selectAll">Zaznacz wszystkie</button><button class="primary" value="save" id="saveSettings">Zapisz</button></div>
+    </form>
+  </dialog>
+
+  <script>
+    const names = {
+      algorytmy_i_struktury_danych: "Algorytmy i struktury danych",
+      architektura_i_systemy_operacyjne: "Architektura i systemy operacyjne",
+      sieci_i_systemy_rozproszone: "Sieci i systemy rozproszone",
+      programowanie_obiektowe_i_platformy: "Programowanie obiektowe i platformy",
+      grafika_i_multimedia: "Grafika i multimedia",
+      sztuczna_inteligencja: "Sztuczna inteligencja",
+      bazy_danych: "Bazy danych",
+      uml_i_inzynieria_oprogramowania: "UML i inżynieria oprogramowania",
+      systemy_wbudowane: "Systemy wbudowane",
+      spoleczne_etyczne_i_przyszlosciowe_aspekty_informatyki: "Społeczne i etyczne aspekty informatyki"
+    };
+    const el = id => document.getElementById(id);
+    let questions = {}, defaults = {}, enabled = {}, remaining = [], current = null, count = 0;
+
+    function pool() {
+      return Object.entries(questions).flatMap(([category, entries]) => enabled[category] ? entries.map(([question, answer]) => ({ category, question, answer })) : []);
+    }
+    function reset() { remaining = pool(); count = 0; nextQuestion(); }
+    function nextQuestion() {
+      el("answer").hidden = true; el("nextButton").hidden = true; el("answerButton").hidden = true;
+      if (!remaining.length) {
+        const active = pool();
+        el("quiz").hidden = true; el("notice").hidden = false;
+        el("notice").textContent = active.length ? "Wszystkie pytania wykorzystane. Zacznij ponownie." : "Wybierz przynajmniej jedną kategorię w ustawieniach.";
+        if (active.length) { el("nextButton").textContent = "Zacznij ponownie"; el("nextButton").hidden = false; }
+        el("progress").textContent = active.length ? `Gotowe: ${count}` : "Brak pytań"; el("total").textContent = ""; return;
+      }
+      const index = Math.floor(Math.random() * remaining.length);
+      current = remaining.splice(index, 1)[0]; count += 1;
+      el("notice").hidden = true; el("quiz").hidden = false;
+      el("category").textContent = names[current.category] || current.category;
+      el("question").textContent = current.question; el("answer").textContent = current.answer;
+      el("progress").textContent = `Pytanie ${count}`; el("total").textContent = `Pozostało: ${remaining.length}`;
+      el("answerButton").hidden = false; el("nextButton").textContent = "Następne pytanie";
+    }
+    function showAnswer() { el("answer").hidden = false; el("answerButton").hidden = true; el("nextButton").hidden = false; }
+    function renderSettings() {
+      el("settingsList").replaceChildren(...Object.keys(questions).map(category => {
+        const label = document.createElement("label");
+        const input = document.createElement("input"); input.type = "checkbox"; input.name = category; input.checked = !!enabled[category];
+        label.append(input, document.createTextNode(names[category] || category)); return label;
+      }));
+    }
+    async function start() {
+      try {
+        const [questionResponse, configResponse] = await Promise.all([fetch("questions.json"), fetch("config.json")]);
+        if (!questionResponse.ok || !configResponse.ok) throw new Error("Nie udało się pobrać plików");
+        questions = await questionResponse.json(); defaults = (await configResponse.json()).categories || {};
+        enabled = { ...defaults, ...JSON.parse(localStorage.getItem("quiz-categories") || "{}") };
+        renderSettings(); reset();
+      } catch (error) { el("progress").textContent = "Błąd"; el("notice").textContent = "Nie udało się wczytać pytań. Otwórz aplikację przez serwer WWW, a nie bezpośrednio jako plik."; }
+    }
+    el("answerButton").addEventListener("click", showAnswer);
+    el("nextButton").addEventListener("click", () => remaining.length ? nextQuestion() : reset());
+    el("settingsButton").addEventListener("click", () => { renderSettings(); el("settingsDialog").showModal(); });
+    el("selectAll").addEventListener("click", () => el("settingsList").querySelectorAll("input").forEach(input => input.checked = true));
+    el("settingsDialog").addEventListener("close", () => {
+      if (el("settingsDialog").returnValue !== "save") return;
+      enabled = Object.fromEntries([...el("settingsList").querySelectorAll("input")].map(input => [input.name, input.checked]));
+      localStorage.setItem("quiz-categories", JSON.stringify(enabled)); reset();
+    });
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
+    start();
+  </script>
+</body>
+</html>

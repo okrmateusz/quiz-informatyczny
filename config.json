@@ -1,0 +1,16 @@
+{
+  "categories": {
+    "algorytmy_i_struktury_danych": true,
+    "architektura_i_systemy_operacyjne": false,
+    "sieci_i_systemy_rozproszone": false,
+    "programowanie_obiektowe_i_platformy": true,
+    "grafika_i_multimedia": true,
+    "sztuczna_inteligencja": true,
+    "bazy_danych": true,
+    "uml_i_inzynieria_oprogramowania": true,
+    "systemy_wbudowane": false,
+    "spoleczne_etyczne_i_przyszlosciowe_aspekty_informatyki": true
+  },
+  "repeat_questions": false,
+  "show_answer_after_key": true
+}
