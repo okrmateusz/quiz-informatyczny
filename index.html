@@ -16,6 +16,7 @@
     button, input { font: inherit; }
     .app { width: min(100%, 720px); margin: auto; padding: max(20px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom)); }
     header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 22px; }
+    .header-actions { display: flex; gap: 8px; }
     h1 { margin: 0; font-size: clamp(1.4rem, 6vw, 2rem); letter-spacing: -.03em; }
     .icon-button { border: 0; border-radius: 14px; padding: 11px 14px; background: #fff; color: #1e3a8a; box-shadow: 0 5px 18px #1e3a8a18; }
     .card { min-height: 390px; display: flex; flex-direction: column; background: #fff; padding: 24px; border-radius: 26px; box-shadow: 0 18px 45px #1e3a8a20; }
@@ -38,12 +39,25 @@
     input { width: 21px; height: 21px; accent-color: #4338ca; flex: 0 0 auto; }
     .settings-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
     .secondary { border: 1px solid #cbd5e1; border-radius: 14px; padding: 13px; background: white; color: #334155; font-weight: 650; }
+    .materials-dialog { width: min(calc(100% - 20px), 760px); max-height: 92svh; }
+    .materials { padding: 22px; }
+    .materials-head { position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: -22px -22px 12px; padding: 18px 22px 12px; background: white; border-bottom: 1px solid #e2e8f0; }
+    .materials-head h2 { margin: 0; }
+    .document { color: #334155; line-height: 1.6; overflow-wrap: anywhere; }
+    .document h1, .document h2, .document h3 { color: #172554; line-height: 1.25; scroll-margin-top: 80px; }
+    .document h1 { font-size: 1.65rem; }
+    .document h2 { margin-top: 2rem; font-size: 1.35rem; border-bottom: 1px solid #e2e8f0; padding-bottom: .35rem; }
+    .document h3 { margin-top: 1.5rem; font-size: 1.1rem; }
+    .document ul { padding-left: 1.3rem; }
+    .document code { background: #eef2ff; color: #3730a3; border-radius: 5px; padding: .12em .35em; }
+    .document pre { overflow-x: auto; background: #172554; color: #e0e7ff; border-radius: 14px; padding: 15px; }
+    .document pre code { padding: 0; background: transparent; color: inherit; }
     [hidden] { display: none !important; }
   </style>
 </head>
 <body>
   <main class="app">
-    <header><h1>Quiz informatyczny</h1><button class="icon-button" id="settingsButton" aria-label="Ustawienia">⚙︎ Ustawienia</button></header>
+    <header><h1>Quiz informatyczny</h1><div class="header-actions"><button class="icon-button" id="materialsButton">Materiały</button><button class="icon-button" id="settingsButton" aria-label="Ustawienia">⚙︎</button></div></header>
     <section class="card" aria-live="polite">
       <div class="meta"><span id="progress">Ładowanie…</span><span id="total"></span></div>
       <div id="quiz" hidden>
@@ -68,6 +82,13 @@
     </form>
   </dialog>
 
+  <dialog id="materialsDialog" class="materials-dialog">
+    <section class="materials">
+      <div class="materials-head"><h2>Materiały do obrony</h2><button class="icon-button" id="closeMaterials" aria-label="Zamknij">✕</button></div>
+      <article class="document" id="document"><p>Wczytuję dokument…</p></article>
+    </section>
+  </dialog>
+
   <script>
     const names = {
       algorytmy_i_struktury_danych: "Algorytmy i struktury danych",
@@ -83,6 +104,36 @@
     };
     const el = id => document.getElementById(id);
     let questions = {}, defaults = {}, enabled = {}, remaining = [], current = null, count = 0;
+
+    function escapeHtml(text) {
+      return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+    }
+    function inlineMarkdown(text) {
+      return escapeHtml(text).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    }
+    function markdownToHtml(markdown) {
+      const lines = markdown.replace(/\r/g, "").split("\n");
+      let html = "", paragraph = [], inList = false, inCode = false, code = [];
+      const flushParagraph = () => { if (paragraph.length) { html += `<p>${inlineMarkdown(paragraph.join(" "))}</p>`; paragraph = []; } };
+      const closeList = () => { if (inList) { html += "</ul>"; inList = false; } };
+      for (const line of lines) {
+        if (line.startsWith("```")) {
+          flushParagraph(); closeList();
+          if (inCode) { html += `<pre><code>${escapeHtml(code.join("\n"))}</code></pre>`; code = []; }
+          inCode = !inCode; continue;
+        }
+        if (inCode) { code.push(line); continue; }
+        const heading = line.match(/^(#{1,3})\s+(.+)$/);
+        const bullet = line.match(/^\s*-\s+(.+)$/);
+        if (heading) { flushParagraph(); closeList(); const level = heading[1].length; html += `<h${level}>${inlineMarkdown(heading[2])}</h${level}>`; }
+        else if (bullet) { flushParagraph(); if (!inList) { html += "<ul>"; inList = true; } html += `<li>${inlineMarkdown(bullet[1])}</li>`; }
+        else if (!line.trim()) { flushParagraph(); closeList(); }
+        else { closeList(); paragraph.push(line.trim()); }
+      }
+      flushParagraph(); closeList();
+      if (inCode) html += `<pre><code>${escapeHtml(code.join("\n"))}</code></pre>`;
+      return html;
+    }
 
     function pool() {
       return Object.entries(questions).flatMap(([category, entries]) => enabled[category] ? entries.map(([question, answer]) => ({ category, question, answer })) : []);
@@ -125,6 +176,8 @@
     el("answerButton").addEventListener("click", showAnswer);
     el("nextButton").addEventListener("click", () => remaining.length ? nextQuestion() : reset());
     el("settingsButton").addEventListener("click", () => { renderSettings(); el("settingsDialog").showModal(); });
+    el("materialsButton").addEventListener("click", () => el("materialsDialog").showModal());
+    el("closeMaterials").addEventListener("click", () => el("materialsDialog").close());
     el("selectAll").addEventListener("click", () => el("settingsList").querySelectorAll("input").forEach(input => input.checked = true));
     el("settingsDialog").addEventListener("close", () => {
       if (el("settingsDialog").returnValue !== "save") return;
@@ -132,6 +185,10 @@
       localStorage.setItem("quiz-categories", JSON.stringify(enabled)); reset();
     });
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
+    fetch("defense_materials.md").then(response => {
+      if (!response.ok) throw new Error(); return response.text();
+    }).then(markdown => { el("document").innerHTML = markdownToHtml(markdown); })
+      .catch(() => { el("document").innerHTML = "<p>Nie udało się wczytać pliku defense_materials.md.</p>"; });
     start();
   </script>
 </body>
