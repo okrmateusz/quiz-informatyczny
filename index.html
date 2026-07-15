@@ -19,13 +19,15 @@
     .header-actions { display: flex; gap: 8px; }
     h1 { margin: 0; font-size: clamp(1.4rem, 6vw, 2rem); letter-spacing: -.03em; }
     .icon-button { border: 0; border-radius: 14px; padding: 11px 14px; background: #fff; color: #1e3a8a; box-shadow: 0 5px 18px #1e3a8a18; }
-    .card { min-height: 390px; display: flex; flex-direction: column; background: #fff; padding: 24px; border-radius: 26px; box-shadow: 0 18px 45px #1e3a8a20; }
+    .card { height: clamp(390px, calc(100svh - 110px), 680px); display: flex; flex-direction: column; overflow: hidden; background: #fff; padding: 24px; border-radius: 26px; box-shadow: 0 18px 45px #1e3a8a20; }
     .meta { display: flex; justify-content: space-between; gap: 12px; color: #64748b; font-size: .85rem; }
     .category { display: inline-block; margin: 28px 0 12px; color: #4f46e5; font-weight: 700; font-size: .85rem; text-transform: uppercase; letter-spacing: .06em; }
     .question { margin: 0; font-size: clamp(1.5rem, 6vw, 2.15rem); line-height: 1.18; letter-spacing: -.025em; }
+    #quiz { min-height: 0; overflow-y: auto; padding-right: 3px; }
     .answer { margin: 25px 0 0; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 1.12rem; line-height: 1.55; color: #334155; }
-    .spacer { flex: 1; min-height: 28px; }
-    .actions { display: grid; gap: 12px; margin-top: 18px; }
+    .spacer { flex: 1 1 auto; min-height: 16px; }
+    .actions { flex: 0 0 auto; display: grid; grid-template-areas: "action"; min-height: 52px; margin-top: 18px; }
+    .actions .primary { grid-area: action; }
     .primary { width: 100%; border: 0; border-radius: 17px; padding: 17px; background: #4338ca; color: white; font-weight: 750; box-shadow: 0 9px 20px #4338ca40; }
     .primary:active { transform: translateY(1px); }
     .notice { text-align: center; color: #64748b; line-height: 1.5; }
@@ -103,7 +105,7 @@
       spoleczne_etyczne_i_przyszlosciowe_aspekty_informatyki: "Społeczne i etyczne aspekty informatyki"
     };
     const el = id => document.getElementById(id);
-    let questions = {}, defaults = {}, enabled = {}, remaining = [], current = null, count = 0;
+    let questions = {}, details = {}, defaults = {}, enabled = {}, remaining = [], current = null, count = 0;
 
     function escapeHtml(text) {
       return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
@@ -136,7 +138,7 @@
     }
 
     function pool() {
-      return Object.entries(questions).flatMap(([category, entries]) => enabled[category] ? entries.map(([question, answer]) => ({ category, question, answer })) : []);
+      return Object.entries(questions).flatMap(([category, entries]) => enabled[category] ? entries.map(([question, answer], index) => ({ category, question, answer: `${answer} ${details[category]?.[index] || ""}`.trim() })) : []);
     }
     function reset() { remaining = pool(); count = 0; nextQuestion(); }
     function nextQuestion() {
@@ -166,9 +168,9 @@
     }
     async function start() {
       try {
-        const [questionResponse, configResponse] = await Promise.all([fetch("questions.json"), fetch("config.json")]);
-        if (!questionResponse.ok || !configResponse.ok) throw new Error("Nie udało się pobrać plików");
-        questions = await questionResponse.json(); defaults = (await configResponse.json()).categories || {};
+        const [questionResponse, detailResponse, configResponse] = await Promise.all([fetch("questions.json"), fetch("answer_details.json"), fetch("config.json")]);
+        if (!questionResponse.ok || !detailResponse.ok || !configResponse.ok) throw new Error("Nie udało się pobrać plików");
+        questions = await questionResponse.json(); details = await detailResponse.json(); defaults = (await configResponse.json()).categories || {};
         enabled = { ...defaults, ...JSON.parse(localStorage.getItem("quiz-categories") || "{}") };
         renderSettings(); reset();
       } catch (error) { el("progress").textContent = "Błąd"; el("notice").textContent = "Nie udało się wczytać pytań. Otwórz aplikację przez serwer WWW, a nie bezpośrednio jako plik."; }
