@@ -1,4 +1,4 @@
-const CACHE = "quiz-v5";
+const CACHE = "quiz-v6";
 const FILES = ["./", "index.html", "config.json", "questions.json", "answer_details.json", "defense_materials.md", "manifest.webmanifest"];
 self.addEventListener("install", event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(FILES))));
 self.addEventListener("activate", event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key))))));

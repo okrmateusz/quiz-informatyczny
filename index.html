@@ -24,7 +24,10 @@
     .category { display: inline-block; margin: 28px 0 12px; color: #4f46e5; font-weight: 700; font-size: .85rem; text-transform: uppercase; letter-spacing: .06em; }
     .question { margin: 0; font-size: clamp(1.5rem, 6vw, 2.15rem); line-height: 1.18; letter-spacing: -.025em; }
     #quiz { min-height: 0; overflow-y: auto; padding-right: 3px; }
-    .answer { margin: 25px 0 0; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 1.12rem; line-height: 1.55; color: #334155; }
+    .answer { margin: 25px 0 0; padding-top: 20px; border-top: 1px solid #e2e8f0; color: #334155; }
+    .answer-label { display: block; margin-bottom: 6px; color: #4338ca; font-size: .78rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+    .answer-text { margin: 0; font-size: 1.12rem; line-height: 1.55; }
+    .answer-detail { margin: 16px 0 0; padding: 14px; border-radius: 13px; background: #f1f5f9; font-size: 1rem; line-height: 1.5; color: #475569; }
     .spacer { flex: 1 1 auto; min-height: 16px; }
     .actions { flex: 0 0 auto; display: grid; grid-template-areas: "action"; min-height: 52px; margin-top: 18px; }
     .actions .primary { grid-area: action; }
@@ -65,7 +68,11 @@
       <div id="quiz" hidden>
         <span class="category" id="category"></span>
         <h2 class="question" id="question"></h2>
-        <p class="answer" id="answer" hidden></p>
+        <div class="answer" id="answer" hidden>
+          <span class="answer-label">Krótka odpowiedź</span>
+          <p class="answer-text" id="answerText"></p>
+          <p class="answer-detail"><strong>Zapamiętaj:</strong> <span id="answerDetail"></span></p>
+        </div>
       </div>
       <p class="notice" id="notice">Wczytuję pytania…</p>
       <div class="spacer"></div>
@@ -138,7 +145,7 @@
     }
 
     function pool() {
-      return Object.entries(questions).flatMap(([category, entries]) => enabled[category] ? entries.map(([question, answer], index) => ({ category, question, answer: `${answer} ${details[category]?.[index] || ""}`.trim() })) : []);
+      return Object.entries(questions).flatMap(([category, entries]) => enabled[category] ? entries.map(([question, answer], index) => ({ category, question, answer, detail: details[category]?.[index] || "" })) : []);
     }
     function reset() { remaining = pool(); count = 0; nextQuestion(); }
     function nextQuestion() {
@@ -154,7 +161,9 @@
       current = remaining.splice(index, 1)[0]; count += 1;
       el("notice").hidden = true; el("quiz").hidden = false;
       el("category").textContent = names[current.category] || current.category;
-      el("question").textContent = current.question; el("answer").textContent = current.answer;
+      el("question").textContent = current.question;
+      el("answerText").textContent = current.answer;
+      el("answerDetail").textContent = current.detail;
       el("progress").textContent = `Pytanie ${count}`; el("total").textContent = `Pozostało: ${remaining.length}`;
       el("answerButton").hidden = false; el("nextButton").textContent = "Następne pytanie";
     }
