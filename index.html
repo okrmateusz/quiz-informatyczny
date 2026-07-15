@@ -31,6 +31,7 @@
     .answer-content h3 { margin: 18px 0 8px; color: #172554; font-size: 1.08rem; }
     .answer-content ul { margin: 8px 0 16px; padding-left: 1.35rem; }
     .answer-content li { margin: 5px 0; }
+    .answer-details { margin-top: 20px; padding-top: 20px; border-top: 1px dashed #cbd5e1; }
     .spacer { flex: 1 1 auto; min-height: 16px; }
     .actions { flex: 0 0 auto; display: grid; grid-template-areas: "action"; min-height: 52px; margin-top: 18px; }
     .actions .primary { grid-area: action; }
@@ -72,8 +73,12 @@
         <span class="category" id="category"></span>
         <h2 class="question" id="question"></h2>
         <div class="answer" id="answer" hidden>
-          <span class="answer-label">Odpowiedź</span>
+          <span class="answer-label">Krótka odpowiedź</span>
           <div class="answer-content" id="answerContent"></div>
+          <div class="answer-details">
+            <span class="answer-label">Szczegółowa odpowiedź</span>
+            <div class="answer-content" id="answerDetails"></div>
+          </div>
         </div>
       </div>
       <p class="notice" id="notice">Wczytuję pytania…</p>
@@ -147,7 +152,7 @@
     }
 
     function pool() {
-      return Object.entries(questions).flatMap(([category, entries]) => enabled[category] ? entries.map(([question], index) => ({ category, question, answer: details[category]?.[index] || "Brak odpowiedzi." })) : []);
+      return Object.entries(questions).flatMap(([category, entries]) => enabled[category] ? entries.map(([question, answer], index) => ({ category, question, answer, details: details[category]?.[index] || "Brak szczegółowej odpowiedzi." })) : []);
     }
     function reset() { remaining = pool(); count = 0; nextQuestion(); }
     function nextQuestion() {
@@ -165,6 +170,7 @@
       el("category").textContent = names[current.category] || current.category;
       el("question").textContent = current.question;
       el("answerContent").innerHTML = markdownToHtml(current.answer);
+      el("answerDetails").innerHTML = markdownToHtml(current.details);
       el("progress").textContent = `Pytanie ${count}`; el("total").textContent = `Pozostało: ${remaining.length}`;
       el("answerButton").hidden = false; el("nextButton").textContent = "Następne pytanie";
     }
